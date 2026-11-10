@@ -1,0 +1,5 @@
+filename,label
+suspicious_login.eml,phishing
+legitimate_notice.eml,legitimate
+invoice_attachment.eml,legitimate
+html_attachment_lure.eml,phishing
