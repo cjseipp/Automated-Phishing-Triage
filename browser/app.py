@@ -20,7 +20,7 @@ SAMPLE_HASHES = {hashlib.sha256(p.read_bytes()).hexdigest() for p in SAMPLE_FILE
 
 st.set_page_config(page_title='Phishing Triage Assistant', page_icon='🛡️', layout='centered')
 st.title('🛡️ Phishing Triage Assistant')
-st.caption('Cyber Ready Clinic | Automated Phishing Triage | Phase 1.3')
+st.caption('Cyber Ready Clinic | Automated Phishing Triage | Phase 1.4')
 st.info('Educational static analysis only. A low score does NOT mean an email is safe. No links are visited and no attachments are executed.')
 if DEMO_ONLY:
     st.warning('PUBLIC DEMO MODE: Only the bundled fictional sample emails are accepted. Do not upload real organizational email.')
@@ -99,7 +99,10 @@ if 'triage_result' in st.session_state:
         for contribution in risk.get('contributions', []):
             st.write(f"+{contribution.get('points', 0)} — {contribution.get('reason', '')}")
         st.caption('Authentication-Results headers are unverified. Threat intelligence is not enabled.')
-    st.subheader('4. Export report')
+    st.subheader('4. Recommended actions')
+    for recommendation in result.get('recommendations', []):
+        st.write('• ' + recommendation)
+    st.subheader('5. Export report')
     report = json.dumps(result, indent=2, ensure_ascii=False).encode('utf-8')
     st.download_button('Download JSON Incident Report', report, file_name='phishing_triage_report.json', mime='application/json')
     st.caption('Reports are generated in memory; the application does not intentionally write uploaded messages to disk. Hosting and platform logs require separate privacy review.')

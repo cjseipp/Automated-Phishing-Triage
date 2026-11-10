@@ -32,3 +32,8 @@ A Tkinter desktop interface is included. On Windows with Python installed, doubl
 The `browser/app.py` Streamlit interface uses the same Python engine as the CLI and desktop app. It offers fictional demo email selection, analysis, plain-English findings, and JSON report download. Public demo mode (`DEMO_ONLY=true`) accepts only the bundled fictional sample emails. Risk scores are preliminary heuristics, not a maliciousness probability.
 
 See [PHASE_1_3_RENDER_SETUP.md](PHASE_1_3_RENDER_SETUP.md) for local testing and Render deployment. The repository includes a `render.yaml` Blueprint.
+
+
+## Phase 1.4
+
+Adds bounded static HTML attachment inspection, URL-shortener and IP-literal detection, active attachment flags, and plain-language recommendations. See `PHASE_1_4_SETUP.md`.
