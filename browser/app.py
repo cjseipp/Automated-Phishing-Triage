@@ -11,7 +11,9 @@ from pathlib import Path
 
 import streamlit as st
 
+
 ROOT = Path(__file__).resolve().parents[1]
+
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -20,6 +22,7 @@ from phishing_triage.reporting import build_enhanced_report
 
 
 SAMPLES = ROOT / "samples"
+
 DEMO_ONLY = os.getenv("DEMO_ONLY", "true").lower() not in (
     "false", "0", "no"
 )
@@ -27,11 +30,16 @@ DEMO_ONLY = os.getenv("DEMO_ONLY", "true").lower() not in (
 SAMPLE_FILES = {
     p.name: p for p in SAMPLES.glob("*.eml")
 }
+
 SAMPLE_HASHES = {
     hashlib.sha256(p.read_bytes()).hexdigest()
     for p in SAMPLE_FILES.values()
 }
 
+
+# -------------------------------------------------------
+# Application configuration
+# -------------------------------------------------------
 
 st.set_page_config(
     page_title="Phishing Triage Assistant",
@@ -40,6 +48,7 @@ st.set_page_config(
 )
 
 st.title("🛡️ Phishing Triage Assistant")
+
 st.caption(
     "Cyber Ready Clinic | Automated Phishing Triage | Phase 1.5"
 )
@@ -80,14 +89,18 @@ raw = None
 filename = None
 
 if choice == "Bundled demonstration sample":
+
     if SAMPLE_FILES:
         filename = st.selectbox(
             "Choose a fictional email",
             sorted(SAMPLE_FILES),
         )
+
         raw = SAMPLE_FILES[filename].read_bytes()
+
     else:
         st.error("No sample emails found in samples/.")
+
 else:
     uploaded = st.file_uploader(
         "Choose an .eml file (10 MiB maximum)",
@@ -99,6 +112,7 @@ else:
 
         if uploaded.size > MAX_EMAIL_BYTES:
             st.error("File exceeds the 10 MiB limit.")
+
         else:
             raw = uploaded.getvalue()
 
@@ -115,6 +129,7 @@ else:
 
 
 with st.expander("Download fictional sample emails"):
+
     for name, path in sorted(SAMPLE_FILES.items()):
         st.download_button(
             f"Download {name}",
@@ -136,12 +151,14 @@ if st.button(
     type="primary",
     disabled=raw is None,
 ):
+
     # Clear the previous report before processing.
     st.session_state.pop("triage_result", None)
     st.session_state.pop("triage_filename", None)
 
     try:
         result = analyze_bytes(raw)
+
         st.session_state["triage_result"] = result
         st.session_state["triage_filename"] = filename
 
@@ -162,12 +179,14 @@ if st.button(
 if "triage_result" in st.session_state:
 
     result = st.session_state["triage_result"]
+
     enhanced = build_enhanced_report(result)
 
     headers = result.get("headers", {})
     scoring = enhanced["scoring"]
 
     score = scoring["score"]
+
     severity = str(
         scoring["severity"]
     ).replace("_", " ").title()
@@ -184,6 +203,7 @@ if "triage_result" in st.session_state:
     )
 
     st.write(f"**Priority:** {severity}")
+
     st.write(enhanced["executive_summary"])
 
     st.write(
@@ -210,11 +230,30 @@ if "triage_result" in st.session_state:
     findings = enhanced["consolidated_findings"]
 
     if findings:
+
         for finding in findings:
+
             st.warning(
-                f"**{finding['title']}**: "
+                f"**{finding['title']}**"
+            )
+
+            st.write(
+                f"**Technical Observation:** "
                 f"{finding['detail']}"
             )
+
+            st.write(
+                f"**Why It Matters:** "
+                f"{finding['why_it_matters']}"
+            )
+
+            st.write(
+                f"**Recommended Action:** "
+                f"{finding['recommended_action']}"
+            )
+
+            st.divider()
+
     else:
         st.info(
             "No indicators matched the current limited "
@@ -237,9 +276,11 @@ if "triage_result" in st.session_state:
     contributions = scoring["contributions"]
 
     if contributions:
+
         rows = []
 
         for item in contributions:
+
             rows.append({
                 "Detection rule": item["type"]
                     .replace("_", " ").title(),
@@ -248,6 +289,7 @@ if "triage_result" in st.session_state:
             })
 
         st.table(rows)
+
     else:
         st.info(
             "No scoring rules contributed points."
@@ -268,11 +310,13 @@ if "triage_result" in st.session_state:
         links = result.get("links", [])
 
         if links:
+
             for link in links:
                 st.code(
                     link.get("url", ""),
                     language=None,
                 )
+
         else:
             st.write("No URLs extracted.")
 
@@ -283,7 +327,9 @@ if "triage_result" in st.session_state:
         )
 
         if attachments:
+
             for attachment in attachments:
+
                 st.write(
                     f"{attachment.get('filename')} | "
                     f"{attachment.get('size_bytes')} bytes"
@@ -293,6 +339,7 @@ if "triage_result" in st.session_state:
                     attachment.get("sha256", ""),
                     language=None,
                 )
+
         else:
             st.write("No attachments extracted.")
 
