@@ -1,4 +1,3 @@
-
 """Phase 1.5 enhanced reporting for phishing triage.
 
 Produces executive-friendly summaries and evidence-based guidance.
@@ -19,10 +18,25 @@ FINDING_TITLES = {
     "url_shortener": "Shortened URL detected",
     "link_domain_mismatch": "Link and sender domains differ",
     "lookalike_domain": "Potential lookalike domain",
+    "payment_instruction_change": (
+        "Suspicious payment instruction change"
+    ),
 }
 
 
 FINDING_EXPLANATIONS = {
+
+    "payment_instruction_change": {
+        "why_it_matters": (
+            "The email appears to request a change to banking "
+            "or payment instructions."
+        ),
+        "recommended_action": (
+            "Verify the request using a previously established "
+            "contact method."
+        ),
+    },
+
     "active_attachment": {
         "why_it_matters": (
             "Some attachment types can contain active content "
@@ -211,6 +225,7 @@ def build_scoring_breakdown(result: dict[str, Any]) -> dict:
     }
 
 
+
 def build_recommendations(
     result: dict[str, Any],
     findings: list[dict],
@@ -248,10 +263,38 @@ def build_recommendations(
             "Use normal organizational verification procedures "
             "before opening unexpected attachments or links."
         )
+        if "payment_instruction_change" not in finding_types:
+            provider.append(
+                "No urgent technical investigation is indicated solely "
+                "by this low triage score. Review if the message is "
+                "unexpected, reported, or inconsistent with policy."
+            )
+
+    # Phase 1.8: Business Email Compromise payment fraud guidance.
+    if "payment_instruction_change" in finding_types:
+        recipient.append(
+            "Do not approve a bank account change, update payment "
+            "instructions, or transfer funds based solely on this email."
+        )
+        recipient.append(
+            "Contact the vendor using a previously verified telephone "
+            "number or established contact method. Obtain approval "
+            "from an authorized person before changing payment details."
+        )
+
         provider.append(
-            "No urgent technical investigation is indicated solely "
-            "by this low triage score. Review if the message is "
-            "unexpected, reported, or inconsistent with policy."
+            "Preserve the original email and review sender, Reply-To, "
+            "message headers, and available authentication evidence."
+        )
+        provider.append(
+            "Investigate possible vendor impersonation or compromised "
+            "email accounts. Correlate with trusted mail-system logs "
+            "when available."
+        )
+        provider.append(
+            "Advise the organization to independently verify the "
+            "payment instructions before approving changes, regardless "
+            "of the email's numerical triage score."
         )
 
     if "active_attachment" in finding_types:
