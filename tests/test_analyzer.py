@@ -60,6 +60,48 @@ class AnalyzerTests(unittest.TestCase):
 
         self.assertIn("link_domain_mismatch", kinds)
         self.assertEqual(len(report["links"]), 1)
+   
+    def test_norton_brand_impersonation(self):
+        raw_email = (
+            "From: Norton Billing <billing@example.net>\r\n"
+            "Subject: Norton payment failed\r\n"
+            "\r\n"
+            "Please review your account."
+        ).encode("utf-8")
+
+        report = analyze_bytes(raw_email)
+        kinds = {item["type"] for item in report["findings"]}
+
+        self.assertIn("brand_impersonation", kinds)
+        self.assertEqual(report["risk"]["score"], 25)
+
+    def test_norton_domain_not_flagged(self):
+        raw_email = (
+            "From: Norton Billing <billing@norton.com>\r\n"
+            "Subject: Norton account notification\r\n"
+            "\r\n"
+            "Your account information is available."
+        ).encode("utf-8")
+
+        report = analyze_bytes(raw_email)
+        kinds = {item["type"] for item in report["findings"]}
+
+        self.assertNotIn("brand_impersonation", kinds)
+        self.assertEqual(report["risk"]["score"], 0)
+
+    def test_norton_discussion_not_impersonation(self):
+        raw_email = (
+            "From: Jane Smith <jane@example.org>\r\n"
+            "Subject: Question about Norton antivirus\r\n"
+            "\r\n"
+            "Should our nonprofit renew Norton antivirus?"
+        ).encode("utf-8")
+
+        report = analyze_bytes(raw_email)
+        kinds = {item["type"] for item in report["findings"]}
+
+        self.assertNotIn("brand_impersonation", kinds)
+        self.assertEqual(report["risk"]["score"], 0)
 
     def test_limit(self):
         with self.assertRaises(ValueError):

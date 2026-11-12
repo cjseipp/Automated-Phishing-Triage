@@ -109,6 +109,31 @@ def _attachment_findings(filename: str, data: bytes) -> list[dict]:
         findings.append({'type': 'attachment_type_mismatch', 'detail': f'Attachment {filename} does not begin with a PDF signature.'})
     return findings
 
+def _brand_impersonation_findings(
+    from_header: str, subject: str, sender_domain: str
+) -> list[dict]:
+    """Flag Norton branding in the sender display name from unrelated domains."""
+    parsed = getaddresses([from_header])
+    display_name = parsed[0][0] if parsed else ''
+
+    claimed_brand = bool(
+        re.search(r'\bnorton\b', display_name, re.IGNORECASE)
+    )
+    if not claimed_brand:
+        return []
+
+    domain = sender_domain.lower().strip().rstrip('.')
+    if domain == 'norton.com' or domain.endswith('.norton.com'):
+        return []
+
+    return [{
+        'type': 'brand_impersonation',
+        'detail': (
+            'Sender display name claims Norton branding, but the From '
+            'address does not use norton.com. This requires independent '
+            'verification; legitimate third-party senders may exist.'
+        ),
+    }]
 
 def _text_findings(text: str) -> list[dict]:
     """Conservative, combined-context checks for requests for sensitive information."""
@@ -171,6 +196,11 @@ def analyze_bytes(raw: bytes) -> dict:
     if reply_to and sender and reply_to.lower() != sender.lower():
         findings.append({'type': 'reply_to_mismatch', 'detail': 'Reply-To differs from From; may be legitimate.'})
     findings.extend(_lookalike_findings(_domain(sender)))
+    findings.extend(
+        _brand_impersonation_findings(
+            headers['from'], headers['subject'], _domain(sender)
+        )
+    )    
     links, attachments = [], []
     parts = list(msg.walk())
     if len(parts) > MAX_PARTS:
@@ -239,7 +269,8 @@ def analyze_bytes(raw: bytes) -> dict:
                'credentials_in_url': 25, 'link_domain_mismatch': 10,
                'html_form': 15, 'html_password_field': 25, 'html_script': 15, 'html_redirect': 20,
                'sensitive_information_request': 15, 'urgent_sensitive_request': 10,
-               'discourage_verification': 15, 'lookalike_domain': 35}
+               'discourage_verification': 15, 'lookalike_domain': 35,
+               'brand_impersonation': 25}
     contributions = [{'type': f['type'], 'points': weights.get(f['type'], 0),
                       'reason': f['detail']} for f in findings if weights.get(f['type'], 0) > 0]
     score = min(100, sum(c['points'] for c in contributions))
