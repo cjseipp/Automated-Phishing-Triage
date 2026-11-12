@@ -229,7 +229,7 @@ def analyze_bytes(raw: bytes) -> dict:
             entry['display_texts'].append(link['display_text'])
     for url in unique_by_url:
         source_contexts = unique_by_url[url]['sources']
-        findings.extend(_url_findings(url, _domain(sender) if 'text/plain' in source_contexts else ''))
+        findings.extend(_url_findings(url, _domain(sender)))
     # Repeated identical finding types do not increase a score.
     findings = list({f['type']: f for f in findings}.values())
     weights = {'display_url_mismatch': 50, 'reply_to_mismatch': 15,

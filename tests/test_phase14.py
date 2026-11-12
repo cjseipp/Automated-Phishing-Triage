@@ -14,7 +14,7 @@ class Phase14Tests(unittest.TestCase):
 
     def test_existing_login_score(self):
         report = analyze_bytes((ROOT / 'samples/suspicious_login.eml').read_bytes())
-        self.assertEqual(report['risk']['score'], 65)
+        self.assertEqual(report['risk']['score'], 75)
 
     def test_plain_invoice_no_false_positive(self):
         report = analyze_bytes((ROOT / 'samples/invoice_attachment.eml').read_bytes())
