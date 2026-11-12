@@ -135,22 +135,85 @@ def _brand_impersonation_findings(
         ),
     }]
 
+
 def _text_findings(text: str) -> list[dict]:
-    """Conservative, combined-context checks for requests for sensitive information."""
+    """Detect sensitive-information requests and suspicious payment changes."""
     normalized = re.sub(r'\s+', ' ', text).lower()
     findings = []
-    sensitive = bool(re.search(r'\b(?:passwords?|passcodes?|bank\s+account\s+details?|banking\s+details?|account\s+credentials?)\b', normalized))
-    request = bool(re.search(r'\b(?:send|provide|share|reply\s+with|email|submit)\b', normalized))
+
+    # Existing detection: requests for sensitive information.
+    sensitive = bool(re.search(
+        r'\b(?:passwords?|passcodes?|bank\s+account\s+details?|'
+        r'banking\s+details?|account\s+credentials?)\b',
+        normalized
+    ))
+
+    request = bool(re.search(
+        r'\b(?:send|provide|share|reply\s+with|email|submit)\b',
+        normalized
+    ))
+
     if sensitive and request:
-        findings.append({'type': 'sensitive_information_request',
-                         'detail': 'Message requests sensitive credentials or banking information; independently verify the request.'})
-        if re.search(r'\b(?:urgent(?:ly)?|immediately|asap|right\s+away)\b', normalized):
-            findings.append({'type': 'urgent_sensitive_request',
-                             'detail': 'Sensitive-information request uses urgency or time pressure.'})
-        if re.search(r'\b(?:do\s+not|don\'t|never)\s+(?:contact|call|tell|notify|inform)\b', normalized):
-            findings.append({'type': 'discourage_verification',
-                             'detail': 'Sensitive-information request discourages independent verification.'})
+        findings.append({
+            'type': 'sensitive_information_request',
+            'detail': (
+                'Message requests sensitive credentials or banking '
+                'information; independently verify the request.'
+            )
+        })
+
+        if re.search(
+            r'\b(?:urgent(?:ly)?|immediately|asap|right\s+away)\b',
+            normalized
+        ):
+            findings.append({
+                'type': 'urgent_sensitive_request',
+                'detail': (
+                    'Sensitive-information request uses urgency '
+                    'or time pressure.'
+                )
+            })
+
+        if re.search(
+            r'\b(?:do\s+not|don\'t|never)\s+'
+            r'(?:contact|call|tell|notify|inform)\b',
+            normalized
+        ):
+            findings.append({
+                'type': 'discourage_verification',
+                'detail': (
+                    'Sensitive-information request discourages '
+                    'independent verification.'
+                )
+            })
+
+    # Phase 1.7: Detect requests to change payment instructions.
+    payment_change = bool(re.search(
+        r'\b(?:change|update|replace|switch|redirect|use\s+(?:a\s+)?new)\b'
+        r'.{0,100}\b(?:bank\s+account|banking\s+details|'
+        r'payment\s+(?:details|instructions)|routing\s+number|'
+        r'wire\s+instructions)\b',
+        normalized
+    ))
+
+    payment_context = bool(re.search(
+        r'\b(?:invoice|payment|vendor|supplier|'
+        r'wire\s+transfer|accounts\s+payable)\b',
+        normalized
+    ))
+
+    if payment_change and payment_context:
+        findings.append({
+            'type': 'payment_instruction_change',
+            'detail': (
+                'Message appears to request a change to banking or '
+                'payment instructions. Verify the request using a '
+                'previously established contact method.'
+            )
+        })
+
     return findings
+
 
 
 class LinkParser(HTMLParser):
@@ -257,32 +320,78 @@ def analyze_bytes(raw: bytes) -> dict:
             entry['sources'].append(link['source'])
         if link['display_text'] and link['display_text'] not in entry['display_texts']:
             entry['display_texts'].append(link['display_text'])
+    
     for url in unique_by_url:
         source_contexts = unique_by_url[url]['sources']
         findings.extend(_url_findings(url, _domain(sender)))
+
     # Repeated identical finding types do not increase a score.
     findings = list({f['type']: f for f in findings}.values())
-    weights = {'display_url_mismatch': 50, 'reply_to_mismatch': 15,
-               'active_attachment': 25, 'risky_attachment': 0, 'archive_attachment': 15, 'double_extension': 20,
-               'filename_obfuscation': 20, 'disguised_executable': 65, 'attachment_type_mismatch': 20,
-               'shortened_url': 15, 'url_shortener': 0, 'ip_address_link': 20, 'punycode_link': 20,
-               'credentials_in_url': 25, 'link_domain_mismatch': 10,
-               'html_form': 15, 'html_password_field': 25, 'html_script': 15, 'html_redirect': 20,
-               'sensitive_information_request': 15, 'urgent_sensitive_request': 10,
-               'discourage_verification': 15, 'lookalike_domain': 35,
-               'brand_impersonation': 25}
-    contributions = [{'type': f['type'], 'points': weights.get(f['type'], 0),
-                      'reason': f['detail']} for f in findings if weights.get(f['type'], 0) > 0]
+
+    # Risk scoring weights.
+    weights = {
+        'display_url_mismatch': 50,
+        'reply_to_mismatch': 15,
+        'active_attachment': 25,
+        'risky_attachment': 0,
+        'archive_attachment': 15,
+        'double_extension': 20,
+        'filename_obfuscation': 20,
+        'disguised_executable': 65,
+        'attachment_type_mismatch': 20,
+        'shortened_url': 15,
+        'url_shortener': 0,
+        'ip_address_link': 20,
+        'punycode_link': 20,
+        'credentials_in_url': 25,
+        'link_domain_mismatch': 10,
+        'html_form': 15,
+        'html_password_field': 25,
+        'html_script': 15,
+        'html_redirect': 20,
+        'sensitive_information_request': 15,
+        'urgent_sensitive_request': 10,
+        'discourage_verification': 15,
+        'lookalike_domain': 35,
+        'brand_impersonation': 25,
+        'payment_instruction_change': 25,
+    }
+
+    contributions = [
+        {
+            'type': f['type'],
+            'points': weights.get(f['type'], 0),
+            'reason': f['detail']
+        }
+        for f in findings
+        if weights.get(f['type'], 0) > 0
+    ]
+
     score = min(100, sum(c['points'] for c in contributions))
-    severity = 'high' if score >= 60 else 'medium' if score >= 30 else 'low' if score > 0 else 'no_indicators_detected'
+
+    severity = (
+        'high' if score >= 60
+        else 'medium' if score >= 30
+        else 'low' if score > 0
+        else 'no_indicators_detected'
+    )
+
     return {
         'sha256_email': hashlib.sha256(raw).hexdigest(),
         'headers': headers,
         'links': list(unique_by_url.values()),
         'attachments': attachments,
         'findings': findings,
-        'risk': {'score': score, 'severity': severity, 'contributions': contributions,
-                 'method': 'heuristic_v3', 'note': 'Triage priority only; not probability of maliciousness or a clean verdict.'},
+        'risk': {
+            'score': score,
+            'severity': severity,
+            'contributions': contributions,
+            'method': 'heuristic_v3',
+            'note': (
+                'Triage priority only; not probability of maliciousness '
+                'or a clean verdict.'
+            )
+        },
         'recommendations': _recommendations(findings),
         'analysis_notes': [
             'Offline static analysis only; no URLs visited or attachments executed.',
@@ -291,6 +400,7 @@ def analyze_bytes(raw: bytes) -> dict:
             'No threat intelligence or definitive maliciousness assessment in Phase 1.',
         ],
     }
+
 
 
 def analyze_file(path: str | Path) -> dict:
