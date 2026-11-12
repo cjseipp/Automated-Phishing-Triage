@@ -1,0 +1,11 @@
+filename,label
+suspicious_login.eml,phishing
+legitimate_notice.eml,legitimate
+invoice_attachment.eml,legitimate
+html_attachment_lure.eml,phishing
+legitimate_html_attachment.eml,legitimate
+phishing_plain_text.eml,phishing
+legitimate_short_url.eml,legitimate
+phishing_lookalike_domain.eml,phishing
+legitimate_newsletter.eml,legitimate
+phishing_credential_form.eml,phishing

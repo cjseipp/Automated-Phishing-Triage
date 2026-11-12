@@ -1,0 +1,9 @@
+From: finance@billing-example.net
+To: recipient@example.org
+Subject: URGENT: Confidential payment request
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+Please urgently send the organization's bank account details and password. Do=
+ not contact the director.

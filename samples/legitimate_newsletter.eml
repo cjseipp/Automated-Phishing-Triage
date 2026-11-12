@@ -1,0 +1,9 @@
+From: newsletter@example.org
+To: recipient@example.org
+Subject: Monthly nonprofit newsletter
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+Visit https://example.org/news and https://example.org/events for community u=
+pdates.
