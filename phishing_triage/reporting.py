@@ -356,6 +356,34 @@ def build_enhanced_report(result: dict[str, Any]) -> dict:
             result, findings
         ),
         "consolidated_findings": findings,
+        
+        "email_authentication_assessment": {
+            "evidence_status": result.get(
+                "email_authentication", {}
+            ).get("evidence_status", "not_available"),
+            "independent_verification": result.get(
+                "email_authentication", {}
+            ).get("independent_verification", False),
+            "from_domain": result.get(
+                "email_authentication", {}
+            ).get("from_domain", ""),
+            "spf": result.get(
+                "email_authentication", {}
+            ).get("spf", []),
+            "dkim": result.get(
+                "email_authentication", {}
+            ).get("dkim", []),
+            "dmarc": result.get(
+                "email_authentication", {}
+            ).get("dmarc", []),
+            "observations": result.get(
+                "email_authentication", {}
+            ).get("observations", []),
+            "notes": result.get(
+                "email_authentication", {}
+            ).get("notes", []),
+        },
+
         "scoring": build_scoring_breakdown(result),
         "recommended_actions": build_recommendations(
             result, findings

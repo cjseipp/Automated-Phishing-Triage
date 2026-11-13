@@ -11,6 +11,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
 from phishing_triage.domains import is_ip_host, registrable_domain
+from phishing_triage.email_authentication import analyze_authentication_headers
 
 URL_RE = re.compile(r'https?://[^\s<>"\']+', re.IGNORECASE)
 MAX_EMAIL_BYTES = 10 * 1024 * 1024
@@ -241,6 +242,7 @@ def analyze_bytes(raw: bytes) -> dict:
     if len(raw) > MAX_EMAIL_BYTES:
         raise ValueError('Email exceeds 10 MiB size limit')
     msg = BytesParser(policy=policy.default).parsebytes(raw)
+    email_authentication = analyze_authentication_headers(msg)
     from_address = getaddresses([str(msg.get('From', ''))])
     reply_address = getaddresses([str(msg.get('Reply-To', ''))])
     sender = from_address[0][1] if from_address else ''
@@ -379,6 +381,7 @@ def analyze_bytes(raw: bytes) -> dict:
     return {
         'sha256_email': hashlib.sha256(raw).hexdigest(),
         'headers': headers,
+        'email_authentication': email_authentication,
         'links': list(unique_by_url.values()),
         'attachments': attachments,
         'findings': findings,

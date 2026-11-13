@@ -220,6 +220,100 @@ if "triage_result" in st.session_state:
         f"**Reply-To:** "
         f"{headers.get('reply_to') or '(none)'}"
     )
+    
+    
+    # ---------------------------------------------------
+    # Email authentication analysis
+    # ---------------------------------------------------
+
+    st.subheader("Email Authentication Analysis")
+
+    auth = result.get("email_authentication")
+
+    if auth is None:
+        st.info(
+            "Email authentication analysis is not available "
+            "for this result."
+        )
+    else:
+        st.warning(
+            "Authentication results are extracted from email "
+            "headers and have NOT been independently verified. "
+            "These headers can be forged."
+        )
+
+        st.write(
+            f"**Visible From domain:** "
+            f"{auth.get('from_domain') or 'Unknown'}"
+        )
+
+        for method, label in (
+            ("spf", "SPF — Sender Policy Framework"),
+            ("dkim", "DKIM — DomainKeys Identified Mail"),
+            (
+                "dmarc",
+                "DMARC — Domain-based Message Authentication, "
+                "Reporting and Conformance",
+            ),
+        ):
+            st.write(f"**{label}**")
+
+            entries = auth.get(method, [])
+
+            if not entries:
+                st.write(
+                    "No result reported in Authentication-Results "
+                    "headers (unknown, not a failure)."
+                )
+                continue
+
+            for entry in entries:
+                alignment = entry.get("alignment")
+
+                if alignment is True:
+                    alignment_text = "Aligned (relaxed comparison)"
+                elif alignment is False:
+                    alignment_text = "Not aligned (relaxed comparison)"
+                else:
+                    alignment_text = "Unknown"
+
+                st.write(
+                    f"Reported result: "
+                    f"**{str(entry.get('result', 'unknown')).upper()}**"
+                )
+
+                st.write(
+                    f"Reported domain: "
+                    f"{entry.get('domain') or 'Unknown'}"
+                )
+
+                st.write(
+                    f"Domain alignment: {alignment_text}"
+                )
+
+                st.caption(
+                    f"Reporting server identifier: "
+                    f"{entry.get('authserv_id') or 'Unknown'} "
+                    f"(not independently trusted)"
+                )
+
+        observations = auth.get("observations", [])
+
+        if observations:
+            st.write("**Authentication observations:**")
+
+            for observation in observations:
+                st.write(
+                    f"- {observation.get('detail', '')}"
+                )
+
+        st.caption(
+            "SPF pass does not necessarily mean the visible "
+            "sender is authenticated. DKIM pass alone does not "
+            "establish message safety. DMARC alignment and "
+            "authentication must be evaluated in the context "
+            "of trusted receiving-server results."
+        )
 
     # ---------------------------------------------------
     # 4. Consolidated findings
